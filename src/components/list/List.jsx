@@ -4,7 +4,7 @@ import Chatlist from './chatList/Chatlist'
 
 const List = () => {
   return (
-    <div className='list'>List
+    <div className='list'>
     <Userinfo />
     <Chatlist />
     </div>
