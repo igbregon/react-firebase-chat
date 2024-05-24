@@ -41,6 +41,11 @@ const Userinfo = () => {
             <img src={currentUser.avatar || "./avatar.png"} alt="" />
             <h2>{currentUser.username}</h2>
         </div>
+        <div className="icons">
+            <img src="./more.png" alt="" />
+            <img src="./video.png" alt="" />
+            <img src="./edit.png" alt="" />
+        </div>
         <div className="weather">
         <button onClick={handleLocationClick}>Clima</button>
         {location && !weather ? <p>Loading weather data...</p> : null}
@@ -50,11 +55,6 @@ const Userinfo = () => {
             <p>Temperatura: {convertToCelsius(weather.main.temp).toFixed(2)} °C</p>
           </div>
         ) : null}
-        </div>
-        <div className="icons">
-            <img src="./more.png" alt="" />
-            <img src="./video.png" alt="" />
-            <img src="./edit.png" alt="" />
         </div>
     </div>
   )
