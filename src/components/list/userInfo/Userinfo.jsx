@@ -3,7 +3,7 @@ import './userinfo.css'
 import { useEffect,useState } from 'react'
 
 const Userinfo = () => {
-
+  //locación de las funciones de la API sujeta a cambios.
   const [location, setLocation] = useState(null);
   const [weather, setWeather] = useState(null);
 
@@ -49,6 +49,8 @@ const Userinfo = () => {
         <div className="weather">
         <button onClick={handleLocationClick}>Clima</button>
         {location && !weather ? <p>Loading weather data...</p> : null}
+        </div>
+        <div className="weatherInfo">
         {weather ? (
           <div>
             <p>Ubicacion: {weather.name}</p>
