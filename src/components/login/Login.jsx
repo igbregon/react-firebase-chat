@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './login.css'
 import { toast } from 'react-toastify'
-import { createUserWithEmailAndPassword } from 'firebase/auth'
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { auth, db } from '../../lib/firebase'
 import { doc, setDoc } from 'firebase/firestore'
 import upload from '../../lib/upload'
@@ -11,6 +11,8 @@ const Login = () => {
         file: null,
         url:""
     })
+
+    const [loading, setLoading] = useState(false)
 
     // Seteo de imagen para el avatar
     const handleAvatar = (e) => {
@@ -22,14 +24,29 @@ const Login = () => {
         }
     }
     // Manejo de inicio de sesión de usuario
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault()
+        setLoading(true)
+
+        const formData = new FormData(e.target)
+        const {email, password} = Object.fromEntries(formData)
+
+        try {
+            await signInWithEmailAndPassword(auth, email, password)
+        } catch (error) {
+            console.log(error)
+            toast.error(error.message)
+        }
+        finally {
+            setLoading(false)
+        }
         //toast.success("Test")
     }
 
     // Manejo de registro de usuario
     const handleRegister = async (e) => {
         e.preventDefault()
+        setLoading(true)
         //toast.success("Test")
         const formData = new FormData(e.target)
         const {username, email, password} = Object.fromEntries(formData)
@@ -58,6 +75,8 @@ const Login = () => {
             console.log(error)
             toast.error(error.message)
             
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -73,7 +92,7 @@ const Login = () => {
                         placeholder="Password"
                         name="password"
                     />
-                    <button>Ingresar</button>
+                    <button disabled={loading}>{loading ? "Loading": "Ingresar"}</button>
                 </form>
             </div>
             <div className="separador"></div>
@@ -97,7 +116,7 @@ const Login = () => {
                         placeholder="Password"
                         name="password"
                     />
-                    <button>Registrar</button>
+                    <button disabled={loading}>{loading ? "Loading": "Registrar"}</button>
                 </form>
             </div>
         </div>
