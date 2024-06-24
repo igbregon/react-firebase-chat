@@ -1,22 +1,81 @@
 import {useEffect, useRef,useState} from 'react'
 import './chat.css'
 import EmojiPicker from 'emoji-picker-react'
+import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { db } from '../../lib/firebase'
+import { useChatStore } from '../../lib/chatStore'
+import { useUserStore } from '../../lib/userStore'
 
 const Chat = () => {
+const [chat, setChat] = useState()
 const [open, setOpen] = useState(false)
 const [text, setText] = useState("")
 
 const endRef = useRef(null)
+const {currentUser} = useUserStore()
+const {chatId, user} = useChatStore()
+
 
 useEffect(() => {
   endRef.current.scrollIntoView({ behavior: "smooth" })
 }, [])
 
+useEffect(()=>{
+  const unSub = onSnapshot(doc(db, "chats", chatId), (res)=>{
+    setChat(res.data())
+  })
+
+  return () => {
+    unSub()
+  }
+},[chatId])
+
+
+
 const handleEmoji = e => {
   setText((prev) => prev + e.emoji)
   setOpen(false)
 }
-console.log(text)
+
+const handleSend = async () =>{
+  if (text === "") return;
+
+  try {
+    
+    await updateDoc(doc(db, "chats", chatId),{
+      messages:arrayUnion({
+        senderId: currentUser.id,
+        text,
+        createdAt: new Date()
+      })
+    })
+
+    const userIDs = [currentUser.id, user.id]
+
+    userIDs.forEach(async (id)=> {
+
+      const userChatsRef = doc(db, "userchats", id)
+      const userChatsSnapshot = await getDoc(userChatsRef)
+
+      if (userChatsSnapshot.exists()) {
+        const userChatsData = userChatsSnapshot.data()
+
+        const chatIndex = userChatsData.chats.findIndex(c=> c.chatId === chatId)
+
+        userChatsData.chats[chatIndex].lastMessage = text
+        userChatsData.chats[chatIndex].isSeen = id === currentUser.id ? true : false
+        userChatsData.chats[chatIndex].updatedAt = Date.now()
+
+        await updateDoc(userChatsRef, {
+          chats: userChatsData.chats
+        })
+      }
+    })
+  } catch (error) {
+    console.log(error)
+  }
+}
+
   return (
     <div className="chat">
       <div className="top">
@@ -34,7 +93,19 @@ console.log(text)
         </div>
       </div>
       <div className="center">
-        <div className="message">
+        { chat?.messages?.map((message) => (
+        <div className="message own" key={message?.createAt}>
+          <div className="texts">
+            {message.img &&
+            <img src={message.img} alt="" />
+            }<p>
+              {message.text}
+            </p>
+            {/* <span>{message.}</span> */}
+          </div>
+        </div>
+        ))} 
+        {/* <div className="message">
           <img src="./avatar.png" alt="" />
           <div className="texts">
             <p>
@@ -45,64 +116,7 @@ console.log(text)
             </p>
             <span>hace 1 minuto</span>
           </div>
-        </div>
-        <div className="message own">
-          <div className="texts">
-            <img src="https://i.guim.co.uk/img/media/81854e64ab48de6e5e0cf750744ab28e943c9dc1/0_0_4368_2621/master/4368.jpg?width=700&quality=85&auto=format&fit=max&s=78fb9bf7d38236d4e241c3f2ec5968c2" alt="" />
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Recusandae suscipit quibusdam laboriosam quos iusto itaque.
-              Delectus eos repellendus dolores illum repudiandae aut inventore
-              in, dignissimos, ipsum a minus dolorem sint!
-            </p>
-            <span>hace 1 minuto</span>
-          </div>
-        </div>
-        <div className="message own">
-          <div className="texts">
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Recusandae suscipit quibusdam laboriosam quos iusto itaque.
-              Delectus eos repellendus dolores illum repudiandae aut inventore
-              in, dignissimos, ipsum a minus dolorem sint!
-            </p>
-            <span>hace 1 minuto</span>
-          </div>
-        </div>
-        <div className="message">
-          <img src="./avatar.png" alt="" />
-          <div className="texts">
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Recusandae suscipit quibusdam laboriosam quos iusto itaque.
-              Delectus eos repellendus dolores illum repudiandae aut inventore
-              in, dignissimos, ipsum a minus dolorem sint!
-            </p>
-            <span>hace 1 minuto</span>
-          </div>
-        </div>
-        <div className="message own">
-          <div className="texts">
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Recusandae suscipit quibusdam laboriosam quos iusto itaque.
-              Delectus eos repellendus dolores illum repudiandae aut inventore
-              in, dignissimos, ipsum a minus dolorem sint!
-            </p>
-            <span>hace 1 minuto</span>
-          </div>
-        </div>
-        <div className="message own">
-          <div className="texts">
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Recusandae suscipit quibusdam laboriosam quos iusto itaque.
-              Delectus eos repellendus dolores illum repudiandae aut inventore
-              in, dignissimos, ipsum a minus dolorem sint!
-            </p>
-            <span>hace 1 minuto</span>
-          </div>
-        </div>
+        </div> */}
         <div ref={endRef}></div>
       </div>
       
@@ -128,7 +142,7 @@ console.log(text)
             <EmojiPicker open={open} onEmojiClick={handleEmoji} />
           </div>
         </div>
-        <button className="sendButton">Enviar</button>
+        <button className="sendButton" onClick={handleSend}>Enviar</button>
       </div>
     </div>
   );

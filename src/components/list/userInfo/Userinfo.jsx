@@ -31,7 +31,7 @@ const Userinfo = () => {
   }
 
   function convertToCelsius(kelvin) {
-    return kelvin - 273.15;
+    return Math.round(kelvin - 273.15);
   }
 
   const {currentUser} = useUserStore()
