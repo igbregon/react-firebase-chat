@@ -5,15 +5,21 @@ import { arrayUnion, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firesto
 import { db } from '../../lib/firebase'
 import { useChatStore } from '../../lib/chatStore'
 import { useUserStore } from '../../lib/userStore'
+import upload from '../../lib/upload'
+// import upload from "../../lib/upload";
 
 const Chat = () => {
 const [chat, setChat] = useState()
 const [open, setOpen] = useState(false)
 const [text, setText] = useState("")
+const [img, setImg ] = useState({
+  file: null,
+  url: "",
+})
 
 const endRef = useRef(null)
 const {currentUser} = useUserStore()
-const {chatId, user} = useChatStore()
+const {chatId, user, isCurrentUserBlocked, isReceiverBlocked} = useChatStore()
 
 
 useEffect(() => {
@@ -37,16 +43,31 @@ const handleEmoji = e => {
   setOpen(false)
 }
 
+const handleImq = (e) => {
+  if(e.target.files[0]){
+      setImg({
+          file: e.target.files[0],
+          url: URL.createObjectURL(e.target.files[0])
+      })
+  }
+}
+
 const handleSend = async () =>{
   if (text === "") return;
 
+  let imgUrl = null
+
   try {
+    if (img.file) {
+      imgUrl = await upload(img.file)
+    }
     
     await updateDoc(doc(db, "chats", chatId),{
       messages:arrayUnion({
         senderId: currentUser.id,
         text,
-        createdAt: new Date()
+        createdAt: new Date(),
+        ...(imgUrl && {img: imgUrl})
       })
     })
 
@@ -74,15 +95,22 @@ const handleSend = async () =>{
   } catch (error) {
     console.log(error)
   }
+
+  setImg({
+    file:null,
+    url:""
+  })
+
+  setText("")
 }
 
   return (
     <div className="chat">
       <div className="top">
         <div className="user">
-          <img src="./avatar.png" alt="" />
+          <img src={user?.avatar || "./avatar.png"}alt="" />
           <div className="texts">
-            <span>Tomás Paz</span>
+            <span>{user?.username}</span>
             <p>Gymrat desde el nacimiento, si señor</p>
           </div>
         </div>
@@ -94,7 +122,7 @@ const handleSend = async () =>{
       </div>
       <div className="center">
         { chat?.messages?.map((message) => (
-        <div className="message own" key={message?.createAt}>
+        <div className={message.senderId === currentUser?.id ? "message own" : "message"} key={message?.createAt}>
           <div className="texts">
             {message.img &&
             <img src={message.img} alt="" />
@@ -104,33 +132,30 @@ const handleSend = async () =>{
             {/* <span>{message.}</span> */}
           </div>
         </div>
-        ))} 
-        {/* <div className="message">
-          <img src="./avatar.png" alt="" />
+        ))}
+        {img.url && (<div className="message own">
           <div className="texts">
-            <p>
-              Lorem ipsum dolor sit amet consectetur adipisicing elit.
-              Recusandae suscipit quibusdam laboriosam quos iusto itaque.
-              Delectus eos repellendus dolores illum repudiandae aut inventore
-              in, dignissimos, ipsum a minus dolorem sint!
-            </p>
-            <span>hace 1 minuto</span>
+          <img src={img.url} alt="" />
           </div>
-        </div> */}
+        </div>)}
         <div ref={endRef}></div>
       </div>
       
       <div className="bottom">
         <div className="icons">
+          <label htmlFor="file">
           <img src="./img.png" alt="" />
+          </label>
+          <input type="file" id="file" style={{display:"none"}} onChange={handleImq}/>
           <img src="./camera.png" alt="" />
           <img src="./mic.png" alt="" />
         </div>
         <input
           type="text"
           value={text}
-          placeholder="Escribe un mensaje..."
+          placeholder={isCurrentUserBlocked || isReceiverBlocked ? "No puedes enviar mensajes" : "Escribe un mensaje..."}
           onChange={(e) => setText(e.target.value)}
+          disabled={isCurrentUserBlocked || isReceiverBlocked}
         />
         <div className="emoji">
           <img
@@ -142,7 +167,7 @@ const handleSend = async () =>{
             <EmojiPicker open={open} onEmojiClick={handleEmoji} />
           </div>
         </div>
-        <button className="sendButton" onClick={handleSend}>Enviar</button>
+        <button className="sendButton" onClick={handleSend} disabled={isCurrentUserBlocked || isReceiverBlocked}>Enviar</button>
       </div>
     </div>
   );
